@@ -22,12 +22,12 @@ public class Followers {
     // Follower (the one who follows)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "follow_user_id", nullable = false)
-    private UserDetails follower;
+    private User follower;
 
     // The user being followed
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "follows_user_id", nullable = false)
-    private UserDetails follows;
+    private User follows;
 
     @Column(name = "created_date")
     private LocalDateTime createdDate = LocalDateTime.now();

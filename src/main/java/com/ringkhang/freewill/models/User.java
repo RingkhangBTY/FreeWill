@@ -12,8 +12,8 @@ import java.util.Map;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class UserDetails {
+//@Builder
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,9 +29,9 @@ public class UserDetails {
     @Column(name = "bio")
     private String bio;
 
-    @Column(name = "metadata", columnDefinition = "jsonb")
-    @Convert(converter = JsonToMapConverter.class)
-    private Map<String,Object> metadata;
+//    @Column(name = "metadata", columnDefinition = "jsonb")
+//    @Convert(converter = JsonToMapConverter.class)
+//    private Map<String,Object> metadata;
 //    private String metadata;   // OR use Map<String,Object> with custom converter
 
     @Column(name = "is_active")

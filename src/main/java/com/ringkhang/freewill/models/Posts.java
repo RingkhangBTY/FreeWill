@@ -23,7 +23,7 @@ public class Posts {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private UserDetails user;
+    private User user;
 
     @Column(name = "is_deleted")
     private Boolean isDeleted = false;
