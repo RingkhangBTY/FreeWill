@@ -1,6 +1,7 @@
 package com.ringkhang.freewill.config;
 
-import com.ringkhang.freewill.services.UserDetailsService;
+import com.ringkhang.freewill.services.MyUserDetailsService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -16,11 +17,8 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 public class UserConfig {
 
-    private final UserDetailsService userDetailsService;
-
-    public UserConfig(UserDetailsService userDetailsService) {
-        this.userDetailsService = userDetailsService;
-    }
+    @Autowired
+    private MyUserDetailsService userDetailsService;
 
     @Bean
     public BCryptPasswordEncoder passwordEncoder(){
@@ -28,29 +26,28 @@ public class UserConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain (HttpSecurity http) throws Exception {
-        return http
-                .csrf(customizer -> customizer.disable())
-                .authorizeHttpRequests(request ->
-                        request
-                                .requestMatchers("register","login","/")
-                                .permitAll()
-                                .anyRequest().authenticated())
-//                .formLogin(Customizer.withDefaults())
-                .httpBasic(Customizer.withDefaults())
-                .sessionManagement(sm ->
-                        sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .build();
-    }
-
-    @Bean
-    public AuthenticationProvider authenticationProvider(){
-
+    public AuthenticationProvider authenticationProvider(BCryptPasswordEncoder encoder){
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setPasswordEncoder(new BCryptPasswordEncoder(12));
+        provider.setPasswordEncoder(encoder);
         provider.setUserDetailsService(userDetailsService);
-
         return provider;
     }
 
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   AuthenticationProvider authProvider) throws Exception {
+
+        http
+                .csrf(csrf -> csrf.disable())
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/register", "/login", "/").permitAll()
+                        .anyRequest().authenticated()
+                )
+//                .authenticationProvider(authProvider)
+                .httpBasic(Customizer.withDefaults())
+
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+
+        return http.build();
+    }
 }

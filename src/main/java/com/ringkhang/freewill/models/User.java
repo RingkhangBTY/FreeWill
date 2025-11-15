@@ -1,8 +1,9 @@
 package com.ringkhang.freewill.models;
 
-import com.ringkhang.freewill.config.JsonToMapConverter;
+import com.vladmihalcea.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Type;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -12,7 +13,7 @@ import java.util.Map;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-//@Builder
+@Builder
 public class User {
 
     @Id
@@ -29,10 +30,9 @@ public class User {
     @Column(name = "bio")
     private String bio;
 
-//    @Column(name = "metadata", columnDefinition = "jsonb")
-//    @Convert(converter = JsonToMapConverter.class)
-//    private Map<String,Object> metadata;
-//    private String metadata;   // OR use Map<String,Object> with custom converter
+    @Type(JsonType.class)
+    @Column(name = "metadata", columnDefinition = "jsonb")
+    private Map<String,Object> metadata;
 
     @Column(name = "is_active")
     private Boolean isActive = true;
