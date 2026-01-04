@@ -1,5 +1,6 @@
 package com.ringkhang.freewill.controller;
 
+import com.ringkhang.freewill.DTO.PostUploadDTO;
 import com.ringkhang.freewill.DTO.PostsResponseDTO;
 import com.ringkhang.freewill.models.Posts;
 import com.ringkhang.freewill.services.PostService;
@@ -22,7 +23,10 @@ public class PostController {
 
     //Uploads a post
     @PostMapping("/upload")
-    public ResponseEntity<String> uploadNewPost(@RequestBody Posts post){
+    public ResponseEntity<String> uploadNewPost(@RequestBody PostUploadDTO post){
+        if (post.getPostTest().isEmpty()){
+            return ResponseEntity.status(HttpStatus.OK).body("Reachieved empty string");
+        }
         return postService.uploadNewPost(post);
     }
 

@@ -5,20 +5,31 @@ import com.ringkhang.freewill.models.MyUserPrincipal;
 import com.ringkhang.freewill.models.User;
 import com.ringkhang.freewill.repo.UserDetailsRepo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.List;
+
+import static com.ringkhang.freewill.util.CommonUtilMethods.convertLocalDateTimeToTimestamp;
 
 @Service
 public class UserService {
 
-    @Autowired
-    private UserDetailsRepo userDetailsRepo;
-    @Autowired
-    private BCryptPasswordEncoder encoder;
+//    @Autowired
+    private final UserDetailsRepo userDetailsRepo;
+//    @Autowired
+    private final BCryptPasswordEncoder encoder;
+
+    public UserService(UserDetailsRepo userDetailsRepo, BCryptPasswordEncoder encoder) {
+        this.userDetailsRepo = userDetailsRepo;
+        this.encoder = encoder;
+    }
 
     public User registerUser(User user) {
         if (userDetailsRepo.existsByUsername(user.getUsername())){
@@ -42,12 +53,36 @@ public class UserService {
         MyUserPrincipal principal = (MyUserPrincipal) authentication.getPrincipal();
         return principal.getUser().getUserId();
     }
+
     // Get full user details including - id , pass and meta date.
     public User getCurrentUserDetails() {
         return userDetailsRepo.findById(getCurrentUserId()).orElse(new User());
     }
+
     // Get full user details including - id , pass and meta date.
     public User getCurrentUserByUserName(String username) {
         return userDetailsRepo.findByUsername(username).orElse(new User());
     }
+
+    // to get user details excluding crucial data like meta-data and passwords
+    public ResponseEntity<UserResponseDTO> getEssentialUserDetails (){
+
+        try{
+            User u = getCurrentUserDetails();
+            if (u.getUserId()==null){
+                return new ResponseEntity<>(null,HttpStatus.NOT_FOUND);
+            }else {
+                UserResponseDTO userData = new UserResponseDTO(
+                        u.getUserId(),
+                        u.getUsername(),
+                        u.getBio(),
+                        convertLocalDateTimeToTimestamp(u.getCreatedDate())
+                );
+                return new ResponseEntity<>(userData,HttpStatus.OK);
+            }
+        } catch (Exception e) {
+            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
 }

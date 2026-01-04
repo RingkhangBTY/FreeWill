@@ -20,7 +20,14 @@ public class PostsResponseDTO {
     private Long likeCount;
     private List<CommentPostResponseDTO> comments;
 
-    public PostsResponseDTO(Long userId, Long postId, String username , String postText, Timestamp postCreateTime, Timestamp postUpdateTime, Long likeCount, List<CommentPostResponseDTO> comments) {
+    public PostsResponseDTO(Long userId,
+                            Long postId,
+                            String username ,
+                            String postText,
+                            Timestamp postCreateTime,
+                            Timestamp postUpdateTime,
+                            Long likeCount,
+                            List<CommentPostResponseDTO> comments) {
         this.userId = userId;
         this.postId = postId;
         this.username = username;

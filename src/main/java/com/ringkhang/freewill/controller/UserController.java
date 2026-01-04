@@ -45,8 +45,8 @@ public class UserController {
     }
 
     @GetMapping("/details")
-    public User getUserDetails(){
-        return userService.getCurrentUserDetails();
+    public ResponseEntity<UserResponseDTO> getUserDetails(){
+        return userService.getEssentialUserDetails();
     }
 
     @GetMapping("/posts")

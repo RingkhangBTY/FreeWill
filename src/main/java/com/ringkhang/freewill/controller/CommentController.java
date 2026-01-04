@@ -17,14 +17,16 @@ public class CommentController {
         this.commentService = commentService;
     }
 
+
+
     @PostMapping("/add")
     public ResponseEntity<?> addComment(String commentText , Long postId){
         try{
             commentService.addComment(commentText,postId);
             return new ResponseEntity<>("Added successful",HttpStatus.OK);
-        }catch (RuntimeException e){
+        }catch (Exception e){
             System.out.println("Error (comment adding): "+e.getMessage());
-            return new ResponseEntity<>(null,HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>("Failed to add comment",HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }
