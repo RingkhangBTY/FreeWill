@@ -1,10 +1,14 @@
 package com.ringkhang.freewill.services;
 
+import com.ringkhang.freewill.DTO.UserRegistrationDTO;
 import com.ringkhang.freewill.DTO.UserResponseDTO;
+import com.ringkhang.freewill.DTO.UserUpdateDetails;
 import com.ringkhang.freewill.models.MyUserPrincipal;
 import com.ringkhang.freewill.models.User;
 import com.ringkhang.freewill.repo.UserDetailsRepo;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.ringkhang.freewill.util.CommonUtilMethods;
+import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -12,8 +16,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static com.ringkhang.freewill.util.CommonUtilMethods.convertLocalDateTimeToTimestamp;
@@ -21,9 +23,7 @@ import static com.ringkhang.freewill.util.CommonUtilMethods.convertLocalDateTime
 @Service
 public class UserService {
 
-//    @Autowired
     private final UserDetailsRepo userDetailsRepo;
-//    @Autowired
     private final BCryptPasswordEncoder encoder;
 
     public UserService(UserDetailsRepo userDetailsRepo, BCryptPasswordEncoder encoder) {
@@ -31,15 +31,33 @@ public class UserService {
         this.encoder = encoder;
     }
 
-    public User registerUser(User user) {
-        if (userDetailsRepo.existsByUsername(user.getUsername())){
-            throw new RuntimeException("Username already exists");
+    // To register user for the first time
+    @Transactional
+    public ResponseEntity<UserResponseDTO> registerUser( UserRegistrationDTO userDetails) {
+
+        if (userDetailsRepo.existsByUsername(userDetails.getUsername())){
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
-        if (user.getPassword() == null || user.getPassword().isEmpty()) {
-            throw new IllegalArgumentException("Password cannot be empty");
-        }
-        user.setPassword(encoder.encode(user.getPassword()));
-        return userDetailsRepo.save(user);
+
+        userDetails.setPassword(encoder.encode(userDetails.getPassword()));
+
+        User user = new User();
+
+        user.setUsername(userDetails.getUsername());
+        user.setPassword(userDetails.getPassword());
+        user.setBio(userDetails.getBio());
+        user.setMetadata(userDetails.getMetadata());
+
+        User savedUser = userDetailsRepo.save(user);
+
+        UserResponseDTO responseDTO = new UserResponseDTO(
+                savedUser.getUserId(),
+                savedUser.getUsername(),
+                savedUser.getBio(),
+                CommonUtilMethods.convertLocalDateTimeToTimestamp(savedUser.getCreatedDate())
+        );
+
+        return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
     }
 
     //Search for user in database for matching names
@@ -85,4 +103,65 @@ public class UserService {
         }
     }
 
+    // Updates the full user details of current user (Username & bio)
+    @Transactional
+    public ResponseEntity<UserResponseDTO> updateUserDetails(@Valid UserUpdateDetails newUserDetails) {
+
+        userDetailsRepo.updateUserNameBio(
+                newUserDetails.getUsername(),
+                newUserDetails.getBio(),
+                getCurrentUserId()
+        );
+
+
+        User u = getCurrentUserDetails();
+
+        return ResponseEntity.status(HttpStatus.OK).body(
+                new UserResponseDTO(
+                        u.getUserId(),
+                        u.getUsername(),
+                        u.getBio(),
+                        CommonUtilMethods.convertLocalDateTimeToTimestamp(u.getCreatedDate())
+                )
+        );
+    }
+
+    //Updates the username of current user
+    @Transactional
+    public ResponseEntity<UserResponseDTO> updateUsername(String newUsername) {
+        userDetailsRepo.updateUsername(
+                newUsername,getCurrentUserId()
+        );
+
+        User u = getCurrentUserDetails();
+
+        return ResponseEntity.status(HttpStatus.OK).body(
+                new UserResponseDTO(
+                        u.getUserId(),
+                        u.getUsername(),
+                        u.getBio(),
+                        CommonUtilMethods.convertLocalDateTimeToTimestamp(u.getCreatedDate())
+                )
+        );
+    }
+
+    //Updates the bio
+    @Transactional
+    public ResponseEntity<UserResponseDTO> updateBio(String newBio){
+
+        userDetailsRepo.updateBio(
+                newBio,getCurrentUserId()
+        );
+
+        User u = getCurrentUserDetails();
+
+        return ResponseEntity.status(HttpStatus.OK).body(
+                new UserResponseDTO(
+                        u.getUserId(),
+                        u.getUsername(),
+                        u.getBio(),
+                        CommonUtilMethods.convertLocalDateTimeToTimestamp(u.getCreatedDate())
+                )
+        );
+    }
 }

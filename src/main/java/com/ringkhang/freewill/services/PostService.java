@@ -3,10 +3,14 @@ package com.ringkhang.freewill.services;
 import com.ringkhang.freewill.DTO.CommentPostResponseDTO;
 import com.ringkhang.freewill.DTO.PostUploadDTO;
 import com.ringkhang.freewill.DTO.PostsResponseDTO;
+import com.ringkhang.freewill.helperClasses.TimeUnit;
 import com.ringkhang.freewill.models.Comments;
 import com.ringkhang.freewill.models.Posts;
 import com.ringkhang.freewill.repo.CommentRepo;
 import com.ringkhang.freewill.repo.PostsRepo;
+import com.ringkhang.freewill.helperClasses.AnyResponse;
+import com.ringkhang.freewill.util.CommonUtilMethods;
+import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -15,6 +19,8 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 
 @Service
 public class PostService {
@@ -23,31 +29,28 @@ public class PostService {
     private final PostsRepo postsRepo;
     private final CommentRepo commentRepo;
 
-
     public PostService(UserService userService, PostsRepo postsRepo , CommentRepo commentRepo) {
         this.userService = userService;
         this.postsRepo = postsRepo;
         this.commentRepo = commentRepo;
     }
 
-    //To upload new post
+    //uploads new post
+    @Transactional
     public ResponseEntity<String> uploadNewPost(PostUploadDTO post){
-        Posts p = new Posts();
-
         try{
+            Posts p = new Posts();
             p.setUser(userService.getCurrentUserDetails());
             p.setPostText(post.getPostTest());
 
             Posts savePost = postsRepo.save(p);
             if (savePost.getPostId() != null) {
-//                return ResponseEntity.ok("Post added successfully");
                 return new ResponseEntity<>("Post added successfully",HttpStatus.OK);
             }else {
                 return new ResponseEntity<>("Failed to save post ",HttpStatus.INTERNAL_SERVER_ERROR);
             }
-
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            e.printStackTrace();
             return new ResponseEntity<>("Failed to process the request",HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -75,7 +78,7 @@ public class PostService {
                 String text = c.getCommentText();
                 LocalDateTime createTime = c.getCreatedDate();
                 LocalDateTime updateTime = c.getUpdateDate();
-                
+
                 CommentPostResponseDTO commentDTO = new CommentPostResponseDTO(
                         commentUserId,commentId,text,createTime,updateTime
                 );
@@ -89,6 +92,29 @@ public class PostService {
             result.add(dto);
         }
         return result;
+    }
+
+    // updates the post text but only after 24hr after that it rejects the request.
+    @Transactional
+    public ResponseEntity<AnyResponse<PostsResponseDTO>> editPost(String newText, Long postId) {
+        Optional<Posts> p = postsRepo.findById(postId);
+
+        if (p.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).
+                    body(new AnyResponse<>("No post found",null));
+        } else if (p.get().getUser().getUserId() != userService.getCurrentUserId()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).
+                    body(new AnyResponse<>(
+                            "Can't edit this post coz your not the author of this post ",null)
+                    );
+        } else if (CommonUtilMethods.timeDifference(p.get().getCreatedDate(), TimeUnit.DAY)>1) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).
+                    body(new AnyResponse<>("Unable to edit post after 1 day",null));
+        }
+
+        postsRepo.updatePostText(newText,postId);
+        return ResponseEntity.status(HttpStatus.OK).
+        body(new AnyResponse<>("Edit successfully",null));
     }
 
     // Gives current users all available posts.

@@ -2,13 +2,12 @@ package com.ringkhang.freewill.controller;
 
 import com.ringkhang.freewill.DTO.PostUploadDTO;
 import com.ringkhang.freewill.DTO.PostsResponseDTO;
-import com.ringkhang.freewill.models.Posts;
 import com.ringkhang.freewill.services.PostService;
+import com.ringkhang.freewill.helperClasses.AnyResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.swing.event.ListDataEvent;
 import java.util.List;
 
 @RestController
@@ -44,6 +43,12 @@ public class PostController {
             System.out.println("Error: "+e.getMessage());
             return new ResponseEntity<>(null,HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    // to edit post test but only allow before 24hr letter user can't edit post
+    @PutMapping("/edit")
+    public ResponseEntity<AnyResponse<PostsResponseDTO>> editPost(@RequestParam String newText, @RequestParam Long postId){
+        return postService.editPost(newText,postId);
     }
 
 }

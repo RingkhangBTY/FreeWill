@@ -2,6 +2,8 @@ package com.ringkhang.freewill.models;
 
 import com.vladmihalcea.hibernate.type.json.JsonType;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.*;
 import org.hibernate.annotations.Type;
 
@@ -24,10 +26,10 @@ public class User {
     @Column(name = "username", nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(name = "password", nullable = false, length = 500)
+    @Column(name = "password", nullable = false, length = 100)
     private String password;
 
-    @Column(name = "bio")
+    @Column(name = "bio",length = 500)
     private String bio;
 
     @Type(JsonType.class)

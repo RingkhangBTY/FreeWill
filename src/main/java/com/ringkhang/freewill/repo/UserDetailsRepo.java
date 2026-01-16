@@ -3,6 +3,7 @@ package com.ringkhang.freewill.repo;
 import com.ringkhang.freewill.DTO.UserResponseDTO;
 import com.ringkhang.freewill.models.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -30,4 +31,35 @@ public interface UserDetailsRepo extends JpaRepository<User, Long>{
     )
     List<UserResponseDTO> getUsersByUsername(@Param("name") String username);
 
+
+    // Updates the username & bio
+    @Modifying
+    @Query(
+            value = "UPDATE public.user_details SET username = :username, bio = :bio WHERE userid = :uId",
+            nativeQuery = true
+    )
+    void updateUserNameBio(@Param("username") String username,
+                           @Param("bio") String bio,
+                           @Param("uId") Long currentUserId);
+
+    // Update username
+    @Modifying
+    @Query(
+            value = "UPDATE public.user_details SET username = :newUsername WHERE userid = :uId",
+            nativeQuery = true
+    )
+    void updateUsername(
+            @Param("newUsername") String newUsername,
+            @Param("uId") Long id);
+
+    // Update bio
+    @Modifying
+    @Query(
+            value = "UPDATE public.user_details SET bio = :newBio WHERE userid = :uId",
+            nativeQuery = true
+    )
+    void updateBio(
+            @Param("newBio") String newBio,
+            @Param("uId") Long currentUserId
+    );
 }

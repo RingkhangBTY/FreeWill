@@ -2,6 +2,7 @@ package com.ringkhang.freewill.repo;
 
 import com.ringkhang.freewill.models.Posts;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -13,6 +14,16 @@ public interface PostsRepo extends JpaRepository<Posts,Long> {
 
     @Query(value = "SELECT * FROM posts WHERE user_id = :userId", nativeQuery = true)
     List<Posts> findPostsByUserId(@Param("userId") Long userId);
+
+    // Updates the post text
+    @Modifying
+    @Query(
+            value = "UPDATE posts SET post_text = :newText WHERE post_id = :pId",
+            nativeQuery = true
+    )
+    public void updatePostText(
+            @Param("newText") String text,
+            @Param("pId") Long id);
 
 
     // To get post based on basic algo
