@@ -2,6 +2,9 @@ package com.ringkhang.freewill.repo;
 
 import com.ringkhang.freewill.DTO.UserResponseDTO;
 import com.ringkhang.freewill.models.User;
+import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -43,6 +46,7 @@ public interface UserDetailsRepo extends JpaRepository<User, Long>{
                            @Param("uId") Long currentUserId);
 
     // Update username
+    @Transactional
     @Modifying
     @Query(
             value = "UPDATE public.user_details SET username = :newUsername WHERE userid = :uId",
@@ -53,6 +57,7 @@ public interface UserDetailsRepo extends JpaRepository<User, Long>{
             @Param("uId") Long id);
 
     // Update bio
+    @Transactional
     @Modifying
     @Query(
             value = "UPDATE public.user_details SET bio = :newBio WHERE userid = :uId",
@@ -62,4 +67,21 @@ public interface UserDetailsRepo extends JpaRepository<User, Long>{
             @Param("newBio") String newBio,
             @Param("uId") Long currentUserId
     );
+
+    // delete user fully
+    @Transactional
+    @Modifying
+    @Query(
+            value = "DELETE FROM user_details WHERE userid = :uId",
+            nativeQuery = true)
+    int deleteUserFully(@Param("uId") Long uId);
+
+    // disable user
+    @Transactional
+    @Modifying
+    @Query(
+            value = "UPDATE public.user_details SET is_active = false WHERE userid = :uId",
+            nativeQuery = true
+    )
+    int deleteUserPartially(@Param("uId") Long uId);
 }

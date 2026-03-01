@@ -19,20 +19,19 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 @Service
 public class PostService {
 
-    private final UserService userService;
     private final PostsRepo postsRepo;
     private final CommentRepo commentRepo;
+    private final UserServiceHelper userServiceHelper;
 
-    public PostService(UserService userService, PostsRepo postsRepo , CommentRepo commentRepo) {
-        this.userService = userService;
+    public PostService(PostsRepo postsRepo , CommentRepo commentRepo , UserServiceHelper helper) {
         this.postsRepo = postsRepo;
         this.commentRepo = commentRepo;
+        this.userServiceHelper = helper;
     }
 
     //uploads new post
@@ -40,7 +39,7 @@ public class PostService {
     public ResponseEntity<String> uploadNewPost(PostUploadDTO post){
         try{
             Posts p = new Posts();
-            p.setUser(userService.getCurrentUserDetails());
+            p.setUser(userServiceHelper.getCurrentUserDetails());
             p.setPostText(post.getPostTest());
 
             Posts savePost = postsRepo.save(p);
@@ -102,7 +101,7 @@ public class PostService {
         if (p.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).
                     body(new AnyResponse<>("No post found",null));
-        } else if (p.get().getUser().getUserId() != userService.getCurrentUserId()) {
+        } else if (p.get().getUser().getUserId() != userServiceHelper.getCurrentUserId()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).
                     body(new AnyResponse<>(
                             "Can't edit this post coz your not the author of this post ",null)
@@ -119,6 +118,6 @@ public class PostService {
 
     // Gives current users all available posts.
     public List<Posts> getCurrentUserPosts() {
-        return postsRepo.findPostsByUserId(userService.getCurrentUserDetails().getUserId());
+        return postsRepo.findPostsByUserId(userServiceHelper.getCurrentUserDetails().getUserId());
     }
 }

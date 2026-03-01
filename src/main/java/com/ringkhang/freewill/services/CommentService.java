@@ -20,21 +20,19 @@ import java.util.Optional;
 public class CommentService {
 
     private final CommentRepo commentRepo;
-    private final UserService userService;
+    private final UserServiceHelper userServiceHelper;
 
-    public CommentService(CommentRepo commentRepo , UserService userService) {
+    public CommentService(CommentRepo commentRepo , UserServiceHelper userServiceHelper) {
         this.commentRepo = commentRepo;
-        this.userService = userService;
+        this.userServiceHelper = userServiceHelper;
     }
 
     // Added new comment to the post
     @Transactional
     public void addComment(String commentText, Long postId) {
-        Long userId = userService.getCurrentUserId();
+        Long userId = userServiceHelper.getCurrentUserId();
         commentRepo.addComment(commentText,postId,userId);
     }
-
-
 
     // Updates the comment but only before 1hr
     @Transactional
@@ -49,7 +47,7 @@ public class CommentService {
                     body(new AnyResponse<>(
                     "No comment found !",null)
                     );
-        } else if (!Objects.equals(c.get().getUser().getUserId(), userService.getCurrentUserId())) {
+        } else if (!Objects.equals(c.get().getUser().getUserId(), userServiceHelper.getCurrentUserId())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).
                     body(new AnyResponse<>(
                             "Can't edit this comment coz your not the author of this comment ",null)
@@ -93,7 +91,7 @@ public class CommentService {
         if (c.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).
                     body("No comment found !");
-        } else if (!Objects.equals(c.get().getUser().getUserId(), userService.getCurrentUserId())) {
+        } else if (!Objects.equals(c.get().getUser().getUserId(), userServiceHelper.getCurrentUserId())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).
                     body("Can't delete this comment coz your not the author of this comment ");
         } else if (CommonUtilMethods.timeDifference(c.get().getCreatedDate(), TimeUnit.HOURS)<12) {
@@ -103,8 +101,8 @@ public class CommentService {
 
         int rowEffected = commentRepo.deleteComment(cId);
         if (rowEffected>=1){
-            return ResponseEntity.status(HttpStatus.NO_CONTENT).
-                    body("Deleted comment successfully");
+            return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                    .body("Deleted comment successfully");
         }
 
         return ResponseEntity

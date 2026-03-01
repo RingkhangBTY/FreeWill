@@ -1,9 +1,9 @@
 package com.ringkhang.freewill.services;
 
+import com.ringkhang.freewill.DTO.DeleteAccountRequestDTO;
 import com.ringkhang.freewill.DTO.UserRegistrationDTO;
 import com.ringkhang.freewill.DTO.UserResponseDTO;
 import com.ringkhang.freewill.DTO.UserUpdateDetails;
-import com.ringkhang.freewill.models.MyUserPrincipal;
 import com.ringkhang.freewill.models.User;
 import com.ringkhang.freewill.repo.UserDetailsRepo;
 import com.ringkhang.freewill.util.CommonUtilMethods;
@@ -11,8 +11,6 @@ import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -25,10 +23,12 @@ public class UserService {
 
     private final UserDetailsRepo userDetailsRepo;
     private final BCryptPasswordEncoder encoder;
+    private final UserServiceHelper userServiceHelper;
 
-    public UserService(UserDetailsRepo userDetailsRepo, BCryptPasswordEncoder encoder) {
+    public UserService(UserDetailsRepo userDetailsRepo, BCryptPasswordEncoder encoder, UserServiceHelper helper) {
         this.userDetailsRepo = userDetailsRepo;
         this.encoder = encoder;
+        this.userServiceHelper = helper;
     }
 
     // To register user for the first time
@@ -65,28 +65,11 @@ public class UserService {
         return userDetailsRepo.getUsersByUsername(username);
     }
 
-    //Returns current user id whose log-in
-    public Long getCurrentUserId(){
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        MyUserPrincipal principal = (MyUserPrincipal) authentication.getPrincipal();
-        return principal.getUser().getUserId();
-    }
-
-    // Get full user details including - id , pass and meta date.
-    public User getCurrentUserDetails() {
-        return userDetailsRepo.findById(getCurrentUserId()).orElse(new User());
-    }
-
-    // Get full user details including - id , pass and meta date.
-    public User getCurrentUserByUserName(String username) {
-        return userDetailsRepo.findByUsername(username).orElse(new User());
-    }
-
     // to get user details excluding crucial data like meta-data and passwords
     public ResponseEntity<UserResponseDTO> getEssentialUserDetails (){
 
         try{
-            User u = getCurrentUserDetails();
+            User u = userServiceHelper.getCurrentUserDetails();
             if (u.getUserId()==null){
                 return new ResponseEntity<>(null,HttpStatus.NOT_FOUND);
             }else {
@@ -110,11 +93,10 @@ public class UserService {
         userDetailsRepo.updateUserNameBio(
                 newUserDetails.getUsername(),
                 newUserDetails.getBio(),
-                getCurrentUserId()
+                userServiceHelper.getCurrentUserId()
         );
 
-
-        User u = getCurrentUserDetails();
+        User u = userServiceHelper.getCurrentUserDetails();
 
         return ResponseEntity.status(HttpStatus.OK).body(
                 new UserResponseDTO(
@@ -130,10 +112,10 @@ public class UserService {
     @Transactional
     public ResponseEntity<UserResponseDTO> updateUsername(String newUsername) {
         userDetailsRepo.updateUsername(
-                newUsername,getCurrentUserId()
+                newUsername, userServiceHelper.getCurrentUserId()
         );
 
-        User u = getCurrentUserDetails();
+        User u = userServiceHelper.getCurrentUserDetails();
 
         return ResponseEntity.status(HttpStatus.OK).body(
                 new UserResponseDTO(
@@ -150,10 +132,10 @@ public class UserService {
     public ResponseEntity<UserResponseDTO> updateBio(String newBio){
 
         userDetailsRepo.updateBio(
-                newBio,getCurrentUserId()
+                newBio, userServiceHelper.getCurrentUserId()
         );
 
-        User u = getCurrentUserDetails();
+        User u = userServiceHelper.getCurrentUserDetails();
 
         return ResponseEntity.status(HttpStatus.OK).body(
                 new UserResponseDTO(
@@ -164,4 +146,44 @@ public class UserService {
                 )
         );
     }
+
+    // Delete user fully -- can't recover later
+    @Transactional
+    public ResponseEntity<String> deleteUserFully(Long uId,String password) {
+        userServiceHelper.validateDeleteEditRequest(uId,password);
+
+        int rowEffected =userDetailsRepo.deleteUserFully(uId);
+        if (rowEffected>=1){
+            return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                    .body("User deleted successfully");
+        }
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body("User already deleted");
+    }
+
+    // to delete the user partially -- can be re cover later
+    @Transactional
+    public ResponseEntity<String> deleteUserPartially(@Valid DeleteAccountRequestDTO deleteAccReqDTO) {
+
+        User user = userServiceHelper.validateDeleteEditRequest(
+                deleteAccReqDTO.getUId(),
+                deleteAccReqDTO.getPassword());
+
+        if (!user.getIsActive()){
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("The account/user is already disabled.");
+        }
+
+        int rowEffected =userDetailsRepo.deleteUserPartially(deleteAccReqDTO.getUId());
+
+        if (rowEffected>=1){
+            return ResponseEntity.status(HttpStatus.NO_CONTENT)
+                    .build();
+        }
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body("The account/user already disabled");
+    }
+
 }
