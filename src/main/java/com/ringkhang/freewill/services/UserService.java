@@ -4,7 +4,10 @@ import com.ringkhang.freewill.DTO.DeleteAccountRequestDTO;
 import com.ringkhang.freewill.DTO.UserRegistrationDTO;
 import com.ringkhang.freewill.DTO.UserResponseDTO;
 import com.ringkhang.freewill.DTO.UserUpdateDetails;
+import com.ringkhang.freewill.exception.FailToCreateNewResourceException;
+import com.ringkhang.freewill.models.Followers;
 import com.ringkhang.freewill.models.User;
+import com.ringkhang.freewill.repo.FollowRepo;
 import com.ringkhang.freewill.repo.UserDetailsRepo;
 import com.ringkhang.freewill.util.CommonUtilMethods;
 import jakarta.transaction.Transactional;
@@ -14,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.sql.SQLException;
 import java.util.List;
 
 import static com.ringkhang.freewill.util.CommonUtilMethods.convertLocalDateTimeToTimestamp;
@@ -24,11 +28,13 @@ public class UserService {
     private final UserDetailsRepo userDetailsRepo;
     private final BCryptPasswordEncoder encoder;
     private final UserServiceHelper userServiceHelper;
+    private final FollowRepo followRepo;
 
-    public UserService(UserDetailsRepo userDetailsRepo, BCryptPasswordEncoder encoder, UserServiceHelper helper) {
+    public UserService(UserDetailsRepo userDetailsRepo, BCryptPasswordEncoder encoder, UserServiceHelper helper, FollowRepo followRepo) {
         this.userDetailsRepo = userDetailsRepo;
         this.encoder = encoder;
         this.userServiceHelper = helper;
+        this.followRepo = followRepo;
     }
 
     // To register user for the first time
@@ -186,4 +192,40 @@ public class UserService {
                 .body("The account/user already disabled");
     }
 
+    // Current use follow the other user
+    public ResponseEntity<?> followUser(Long userID) {
+
+        User followUser = userDetailsRepo.findById(userID).orElse(new User());
+
+        if (followUser.getUsername() == null){
+            throw new FailToCreateNewResourceException("Unable to find the user ");
+        }else if (followUser.getIsActive() == false ){
+            throw new FailToCreateNewResourceException(
+                    "The requested follow user is not active"
+            );
+        }
+
+        if (isAlreadyFollowed(userID)){
+            throw new FailToCreateNewResourceException("Current user already follows this user..");
+        }
+
+        Followers follow = new Followers();
+        follow.setFollower(userServiceHelper.getCurrentUserDetails());
+        follow.setFollows(followUser);
+
+        Followers followers = followRepo.save(follow);
+
+        if (followers.getFollower() == null || followers.getFollows() == null){
+            throw new FailToCreateNewResourceException(
+                    "Failed to follow user"
+            );
+        }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body("Followed successfully");
+    }
+
+    private boolean isAlreadyFollowed(Long userId){
+        Followers followers = followRepo.findByUserId(userServiceHelper.getCurrentUserId(),userId);
+        return followers != null;
+    }
 }

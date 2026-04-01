@@ -2,6 +2,7 @@ package com.ringkhang.freewill.controller;
 
 import com.ringkhang.freewill.DTO.PostUploadDTO;
 import com.ringkhang.freewill.DTO.PostsResponseDTO;
+import com.ringkhang.freewill.models.Posts;
 import com.ringkhang.freewill.services.PostService;
 import com.ringkhang.freewill.helperClasses.AnyResponse;
 import org.springframework.http.HttpStatus;
@@ -49,6 +50,11 @@ public class PostController {
     @PutMapping("/edit")
     public ResponseEntity<AnyResponse<PostsResponseDTO>> editPost(@RequestParam String newText, @RequestParam Long postId){
         return postService.editPost(newText,postId);
+    }
+
+    @GetMapping("/posts")
+    public List<Posts> userPosts(){
+        return postService.getCurrentUserPosts();
     }
 
 }

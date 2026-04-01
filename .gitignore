@@ -33,3 +33,5 @@ build/
 .vscode/
 
 application.properties
+
+API_DESIGN_PLAN.md

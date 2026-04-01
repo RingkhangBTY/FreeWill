@@ -40,13 +40,20 @@ public class UserConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/register", "/login", "/").permitAll()
+                        .requestMatchers(
+                                "user/register",
+                                "user/login",
+                                "home/"
+                        )
+                        .permitAll()
                         .anyRequest().authenticated()
                 )
-//                .authenticationProvider(authProvider)
+                .authenticationProvider(authProvider)
                 .httpBasic(Customizer.withDefaults())
 
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                .sessionManagement(sm ->
+                        sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+                );
 
         return http.build();
     }

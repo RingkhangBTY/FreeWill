@@ -8,6 +8,7 @@ import com.ringkhang.freewill.models.Posts;
 import com.ringkhang.freewill.services.PostService;
 import com.ringkhang.freewill.services.UserService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +16,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("user")
+@RequestMapping("/user")
+@Slf4j
 public class UserController {
 
     private final UserService userService;
@@ -26,19 +28,24 @@ public class UserController {
         this.postService = postService;
     }
 
+    // follow another user
+    @PostMapping("/follow/{userID}")
+    public ResponseEntity<?> follow(@PathVariable Long userID){
+        return userService.followUser(userID);
+    }
+
+    // Register new user no auth needed
     @PostMapping("/register")
     public ResponseEntity<UserResponseDTO> userRegister (@Valid @RequestBody UserRegistrationDTO userDetails){
+        log.info("User created successfully");
         return userService.registerUser(userDetails);
     }
 
+    // Retrieve current users details
     @GetMapping("/details")
     public ResponseEntity<UserResponseDTO> getUserDetails(){
+        log.info("User details requested");
         return userService.getEssentialUserDetails();
-    }
-
-    @GetMapping("/posts")
-    public List<Posts> userPosts(){
-        return postService.getCurrentUserPosts();
     }
 
     // Updates current user details including both username & bio
@@ -53,15 +60,15 @@ public class UserController {
         return userService.updateUsername(username);
     }
 
-    // Update the username of current user
+    // Update the bio of current user
     @PutMapping("/bio")
     public ResponseEntity<UserResponseDTO> updateBio(@RequestParam String bio){
         return userService.updateBio(bio);
     }
 
     // Search user's by username
-    @GetMapping("search-user")
-    public ResponseEntity<List<UserResponseDTO>> searchUsersByUsername(@RequestParam String username){
+    @GetMapping("search-user/{username}")
+    public ResponseEntity<List<UserResponseDTO>> searchUsersByUsername(@PathVariable @RequestParam String username){
         try{
             List<UserResponseDTO> users = userService.getUsersByUsername(username);
             if (!users.isEmpty()){

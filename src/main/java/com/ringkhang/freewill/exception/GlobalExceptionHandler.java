@@ -1,10 +1,6 @@
-package com.ringkhang.freewill.helperClasses;
+package com.ringkhang.freewill.exception;
 
 import com.ringkhang.freewill.DTO.ErrorResponse;
-import com.ringkhang.freewill.exception.GenericException;
-import com.ringkhang.freewill.exception.NoUserFound;
-import com.ringkhang.freewill.exception.RequestedResourceNotAvailable;
-import com.ringkhang.freewill.exception.UnauthorizeException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -72,13 +68,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handleValidationErrors(MethodArgumentNotValidException ex) {
+
         String details = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
-                .map(err -> err.getField() + ": " + err.getDefaultMessage())
+                .map(err ->
+                        err.getField() + ": " + err.getDefaultMessage()
+                )
                 .collect(Collectors.joining(", "));
 
         return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "Validation failed", details);
+    }
+
+    //If fails to create any new resources like new entries etc
+    @ExceptionHandler(FailToCreateNewResourceException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ErrorResponse handleFailedNewResourcesCreatedException(FailToCreateNewResourceException ex){
+        String details = ex.getMessage();
+        return new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(),"Failed to create new resources",details);
     }
 
 }
