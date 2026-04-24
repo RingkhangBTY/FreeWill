@@ -28,7 +28,7 @@ public interface CommentRepo extends JpaRepository<Comments,Long> {
                                             :uId,
                                             :pId
                                     )""", nativeQuery = true)
-    void addComment(@Param("text") String commentText, @Param("pId") Long postId, @Param("uId") Long userId);
+    int addComment(@Param("text") String commentText, @Param("pId") Long postId, @Param("uId") Long userId);
 
 
     // Updates comment text and update time

@@ -1,15 +1,14 @@
 package com.ringkhang.freewill.services;
 
 import com.ringkhang.freewill.DTO.CommentDTO;
-import com.ringkhang.freewill.helperClasses.AnyResponse;
-import com.ringkhang.freewill.helperClasses.TimeUnit;
+import com.ringkhang.freewill.exception.*;
 import com.ringkhang.freewill.models.Comments;
+import com.ringkhang.freewill.models.Posts;
 import com.ringkhang.freewill.models.User;
 import com.ringkhang.freewill.repo.CommentRepo;
+import com.ringkhang.freewill.repo.PostsRepo;
 import com.ringkhang.freewill.util.CommonUtilMethods;
 import jakarta.transaction.Transactional;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -21,93 +20,87 @@ public class CommentService {
 
     private final CommentRepo commentRepo;
     private final UserServiceHelper userServiceHelper;
+    private final PostsRepo postsRepo;
 
-    public CommentService(CommentRepo commentRepo , UserServiceHelper userServiceHelper) {
+    public CommentService(CommentRepo commentRepo , UserServiceHelper userServiceHelper, PostsRepo postsRepo) {
         this.commentRepo = commentRepo;
         this.userServiceHelper = userServiceHelper;
+        this.postsRepo = postsRepo;
     }
 
     // Added new comment to the post
     @Transactional
     public void addComment(String commentText, Long postId) {
-        Long userId = userServiceHelper.getCurrentUserId();
-        commentRepo.addComment(commentText,postId,userId);
+
+        if (commentText == null || commentText.isBlank()) {
+            throw new IllegalArgumentException("Comment cannot be empty");
+        }
+
+        User user = userServiceHelper.getCurrentUserDetails();
+
+        Posts post = postsRepo.findById(postId)
+                .orElseThrow(() -> new RequestedResourceNotAvailable("No post found."));
+
+        Comments comment = new Comments();
+        comment.setCommentText(commentText);
+        comment.setPost(post);
+        comment.setUser(user);
+        comment.setCreatedDate(LocalDateTime.now());
+
+        commentRepo.save(comment);
     }
 
     // Updates the comment but only before 1hr
     @Transactional
-    public ResponseEntity<AnyResponse<CommentDTO>> updateComment(String comment, Long cId) {
-        Objects.requireNonNull(comment);
-        Objects.requireNonNull(cId);
+    public CommentDTO updateComment(String comment, Long cId) {
 
-        Optional<Comments> c = commentRepo.findById(cId);
+        Comments commentsEntity = commentRepo.findById(cId).
+                orElseThrow(()-> new RequestedResourceNotAvailable("No comment found! ") );
 
-        if (c.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).
-                    body(new AnyResponse<>(
-                    "No comment found !",null)
-                    );
-        } else if (!Objects.equals(c.get().getUser().getUserId(), userServiceHelper.getCurrentUserId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).
-                    body(new AnyResponse<>(
-                            "Can't edit this comment coz your not the author of this comment ",null)
-                    );
-        } else if (CommonUtilMethods.timeDifference(c.get().getCreatedDate(), TimeUnit.HOURS)>1) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).
-                    body(new AnyResponse<>(
-                            "Can't edit comment after 1 hr",null)
-                    );
+        if (!Objects.equals(commentsEntity.getUser().getUserId(), userServiceHelper.getCurrentUserId())) {
+            throw new UnauthorizedException("Can't edit this comment coz your not the author of this comment ");
+        }
+        if (commentsEntity.getCreatedDate()
+                .plusHours(1)
+                .isBefore(LocalDateTime.now())){
+            throw new TimeOutException("Can't edit comment after 1 hr");
         }
 
-        commentRepo.updateComment(comment,cId, LocalDateTime.now());
-        Optional<Comments> updatedComment = commentRepo.findById(cId);
+        commentsEntity.setCommentText(comment);
+        commentsEntity.setUpdateDate(LocalDateTime.now());
 
-        CommentDTO commentDTO = new CommentDTO(
-                updatedComment.get().getCommentId(),
-                updatedComment.get().getCommentText(),
-                updatedComment.get().getUser().getUserId(),
-                updatedComment.get().getPost().getPostId(),
-                CommonUtilMethods.convertLocalDateTimeToTimestamp(updatedComment.get().getCreatedDate()),
-                CommonUtilMethods.convertLocalDateTimeToTimestamp(updatedComment.get().getUpdateDate())
+        return new CommentDTO(
+                commentsEntity.getCommentId(),
+                commentsEntity.getCommentText(),
+                commentsEntity.getUser().getUserId(),
+                commentsEntity.getPost().getPostId(),
+                CommonUtilMethods.convertLocalDateTimeToTimestamp(commentsEntity.getCreatedDate()),
+                CommonUtilMethods.convertLocalDateTimeToTimestamp(commentsEntity.getUpdateDate())
         );
-
-        return ResponseEntity.status(HttpStatus.OK).
-                body(new AnyResponse<>(
-                        "Comment update successfully .",commentDTO)
-                );
     }
 
-    // Delete comment
-    public ResponseEntity<String> deleteCommentPartial(Long cId) {
+    // Delete comment permanently
+    public void deleteCommentPermanent(Long cId) {
 
-        if (cId == null) {
-            return ResponseEntity
-                    .badRequest()
-                    .body("Comment id must not be null");
+        Comments commentEntity = commentRepo.findById(cId).
+                orElseThrow(()-> new RequestedResourceNotAvailable("No comment found!"));
+
+        if (!Objects.equals(commentEntity.getUser().getUserId(), userServiceHelper.getCurrentUserId())) {
+            throw new UnauthorizedException(
+                    "Can't delete this comment coz your not the author of this comment ");
         }
 
-        Optional<Comments> c = commentRepo.findById(cId);
-
-        if (c.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).
-                    body("No comment found !");
-        } else if (!Objects.equals(c.get().getUser().getUserId(), userServiceHelper.getCurrentUserId())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).
-                    body("Can't delete this comment coz your not the author of this comment ");
-        } else if (CommonUtilMethods.timeDifference(c.get().getCreatedDate(), TimeUnit.HOURS)<12) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).
-                    body("Can't delete comment after 12 hr");
+        if (commentEntity.getCreatedDate()
+                .plusHours(12)
+                .isBefore(LocalDateTime.now())){
+            throw new TimeOutException("Can't delete comment after 12 hr");
         }
 
         int rowEffected = commentRepo.deleteComment(cId);
-        if (rowEffected>=1){
-            return ResponseEntity.status(HttpStatus.NO_CONTENT)
-                    .body("Deleted comment successfully");
-        }
 
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body("Comment was already deleted");
+        if (rowEffected == 0 ){
+            throw new RuntimeException("Fails tp delete comment");
+        }
     }
 }
 
