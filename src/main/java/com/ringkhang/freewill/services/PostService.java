@@ -3,14 +3,17 @@ package com.ringkhang.freewill.services;
 import com.ringkhang.freewill.DTO.CommentPostResponseDTO;
 import com.ringkhang.freewill.DTO.PostUploadDTO;
 import com.ringkhang.freewill.DTO.PostsResponseDTO;
-import com.ringkhang.freewill.helperClasses.TimeUnit;
+import com.ringkhang.freewill.exception.RequestedResourceNotAvailable;
+import com.ringkhang.freewill.exception.TimeOutException;
+import com.ringkhang.freewill.exception.UnauthorizedException;
 import com.ringkhang.freewill.models.Comments;
 import com.ringkhang.freewill.models.Posts;
 import com.ringkhang.freewill.repo.CommentRepo;
+import com.ringkhang.freewill.repo.LikesRepo;
 import com.ringkhang.freewill.repo.PostsRepo;
-import com.ringkhang.freewill.helperClasses.AnyResponse;
 import com.ringkhang.freewill.util.CommonUtilMethods;
 import jakarta.transaction.Transactional;
+import org.hibernate.annotations.processing.Find;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -19,7 +22,6 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class PostService {
@@ -27,11 +29,16 @@ public class PostService {
     private final PostsRepo postsRepo;
     private final CommentRepo commentRepo;
     private final UserServiceHelper userServiceHelper;
+    private final LikesRepo likesRepo;
 
-    public PostService(PostsRepo postsRepo , CommentRepo commentRepo , UserServiceHelper helper) {
+    public PostService(PostsRepo postsRepo,
+                       CommentRepo commentRepo,
+                       UserServiceHelper userServiceHelper,
+                       LikesRepo likesRepo) {
         this.postsRepo = postsRepo;
         this.commentRepo = commentRepo;
-        this.userServiceHelper = helper;
+        this.userServiceHelper = userServiceHelper;
+        this.likesRepo = likesRepo;
     }
 
     //uploads new post
@@ -95,29 +102,67 @@ public class PostService {
 
     // updates the post text but only after 24hr after that it rejects the request.
     @Transactional
-    public ResponseEntity<AnyResponse<PostsResponseDTO>> editPost(String newText, Long postId) {
-        Optional<Posts> p = postsRepo.findById(postId);
+    public void editPost(String newText, Long postId) {
+        Posts p = postsRepo.findById(postId)
+                .orElseThrow(()-> new RequestedResourceNotAvailable("No post found"));
 
-        if (p.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).
-                    body(new AnyResponse<>("No post found",null));
-        } else if (p.get().getUser().getUserId() != userServiceHelper.getCurrentUserId()) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).
-                    body(new AnyResponse<>(
-                            "Can't edit this post coz your not the author of this post ",null)
-                    );
-        } else if (CommonUtilMethods.timeDifference(p.get().getCreatedDate(), TimeUnit.DAY)>1) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).
-                    body(new AnyResponse<>("Unable to edit post after 1 day",null));
+        if (p.getUser().getUserId() != userServiceHelper.getCurrentUserId()) {
+            throw new UnauthorizedException("Can't edit this post coz your not the author of this post ");
+
+        } else if (p.getCreatedDate().plusHours(24).isBefore(LocalDateTime.now())) {
+            throw new TimeOutException("Unable to edit post after 1 day");
         }
 
         postsRepo.updatePostText(newText,postId);
-        return ResponseEntity.status(HttpStatus.OK).
-        body(new AnyResponse<>("Edit successfully",null));
     }
 
     // Gives current users all available posts.
-    public List<Posts> getCurrentUserPosts() {
-        return postsRepo.findPostsByUserId(userServiceHelper.getCurrentUserDetails().getUserId());
+    public List<PostsResponseDTO> getCurrentUserPosts() {
+
+        List<Posts> postsList = postsRepo
+                .findPostsByUserId(userServiceHelper.getCurrentUserId());
+
+        List<PostsResponseDTO> postsResponseDTOList = new ArrayList<>();
+
+        for (Posts posts : postsList){
+
+            List<Comments> commentsList = commentRepo.findCommentsByPostId(posts.getPostId());
+
+            List<CommentPostResponseDTO> commentPostResponseDTOList =
+                    new ArrayList<>();
+
+            for (Comments c : commentsList){
+                commentPostResponseDTOList.add(
+                        new CommentPostResponseDTO(
+                                c.getUser().getUserId(),
+                                c.getCommentId(),
+                                c.getCommentText(),
+                                c.getCreatedDate(),
+                                c.getUpdateDate()
+                        )
+                );
+            }
+
+            PostsResponseDTO responseDTO = new PostsResponseDTO(
+                    posts.getUser().getUserId(),
+                    posts.getPostId(),
+                    posts.getUser().getUsername(),
+                    posts.getPostText(),
+                    CommonUtilMethods.convertLocalDateTimeToTimestamp(posts.getCreatedDate()),
+                    CommonUtilMethods.convertLocalDateTimeToTimestamp(posts.getUpdateDate()),
+                    getLikeCount(posts.getPostId()),
+                    commentPostResponseDTOList
+            );
+
+            postsResponseDTOList.add(responseDTO);
+        }
+
+        return postsResponseDTOList;
     }
+
+    // returns like count
+    public Long getLikeCount(Long postId){
+        return likesRepo.getLikeCountByPost(postId);
+    }
+
 }
