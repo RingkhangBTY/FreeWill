@@ -1,6 +1,7 @@
 package com.ringkhang.freewill.exception;
 
 import com.ringkhang.freewill.DTO.ErrorResponse;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -44,9 +45,9 @@ public class GlobalExceptionHandler {
     }
 
     // use to handle when a user/account is not authorize to perform some task.
-    @ExceptionHandler(UnauthorizeException.class)
+    @ExceptionHandler(UnauthorizedException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    public ErrorResponse handleUnauthorizeException (UnauthorizeException e){
+    public ErrorResponse handleUnauthorizeException (UnauthorizedException e){
         String details = """
                 
                 """.replace("\n","").trim();
@@ -77,7 +78,10 @@ public class GlobalExceptionHandler {
                 )
                 .collect(Collectors.joining(", "));
 
-        return new ErrorResponse(HttpStatus.BAD_REQUEST.value(), "Validation failed", details);
+        return new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "Validation failed",
+                details);
     }
 
     //If fails to create any new resources like new entries etc
@@ -86,6 +90,23 @@ public class GlobalExceptionHandler {
     public ErrorResponse handleFailedNewResourcesCreatedException(FailToCreateNewResourceException ex){
         String details = ex.getMessage();
         return new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(),"Failed to create new resources",details);
+    }
+
+    // handle method arguments validations
+    @ExceptionHandler(ConstraintViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleConstraintViolation(ConstraintViolationException ex) {
+
+        String details = ex.getConstraintViolations()
+                .stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .collect(Collectors.joining(", "));
+
+        return new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "Validation failed",
+                details
+        );
     }
 
 }

@@ -1,7 +1,7 @@
 package com.ringkhang.freewill.exception;
 
-public class FailsToUpdateEditReasourceException extends RuntimeException {
-  public FailsToUpdateEditReasourceException(String message) {
+public class FailsToUpdateEditResourceException extends RuntimeException {
+  public FailsToUpdateEditResourceException(String message) {
     super(message);
   }
 }
