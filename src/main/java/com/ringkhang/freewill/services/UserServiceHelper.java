@@ -1,5 +1,8 @@
 package com.ringkhang.freewill.services;
 
+import com.ringkhang.freewill.exception.NoUserFound;
+import com.ringkhang.freewill.exception.RequestedResourceNotAvailable;
+import com.ringkhang.freewill.exception.UnauthorizedException;
 import com.ringkhang.freewill.models.MyUserPrincipal;
 import com.ringkhang.freewill.models.User;
 import com.ringkhang.freewill.repo.UserDetailsRepo;
@@ -34,28 +37,27 @@ public class UserServiceHelper {
 
     // Get full user details including - id , pass and meta date.
     public User getCurrentUserDetails() {
-        return userDetailsRepo.findById(getCurrentUserId()).orElse(new User());
+        return userDetailsRepo.findById(getCurrentUserId()).orElseThrow(
+                ()-> new NoUserFound("Fails to fetch user details")
+        );
     }
 
     // validates user details
     User validateDeleteEditRequest(Long uId, String password){
 
         if (!uId.equals(getCurrentUserId())) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
+            throw new UnauthorizedException(
                     "You can't delete because you're not the actual user"
             );
         }
 
         User user = userDetailsRepo.findById(uId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new RequestedResourceNotAvailable(
                         "No user found with user id"
                 ));
 
         if (!encoder.matches(password, user.getPassword())) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
+            throw new UnauthorizedException(
                     "Wrong password!"
             );
         }

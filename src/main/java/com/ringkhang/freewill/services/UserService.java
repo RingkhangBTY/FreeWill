@@ -5,6 +5,9 @@ import com.ringkhang.freewill.DTO.UserRegistrationDTO;
 import com.ringkhang.freewill.DTO.UserResponseDTO;
 import com.ringkhang.freewill.DTO.UserUpdateDetails;
 import com.ringkhang.freewill.exception.FailToCreateNewResourceException;
+import com.ringkhang.freewill.exception.FailsToUpdateEditResourceException;
+import com.ringkhang.freewill.exception.NoUserFound;
+import com.ringkhang.freewill.exception.RequestedResourceNotAvailable;
 import com.ringkhang.freewill.models.Followers;
 import com.ringkhang.freewill.models.User;
 import com.ringkhang.freewill.repo.FollowRepo;
@@ -39,10 +42,10 @@ public class UserService {
 
     // To register user for the first time
     @Transactional
-    public ResponseEntity<UserResponseDTO> registerUser( UserRegistrationDTO userDetails) {
+    public UserResponseDTO registerUser( UserRegistrationDTO userDetails) {
 
         if (userDetailsRepo.existsByUsername(userDetails.getUsername())){
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            throw new FailToCreateNewResourceException("User already exist");
         }
 
         userDetails.setPassword(encoder.encode(userDetails.getPassword()));
@@ -63,143 +66,149 @@ public class UserService {
                 CommonUtilMethods.convertLocalDateTimeToTimestamp(savedUser.getCreatedDate())
         );
 
-        return ResponseEntity.status(HttpStatus.OK).body(responseDTO);
+        if (responseDTO.getUsername().isBlank()){
+            throw new FailToCreateNewResourceException("Fails to create new user due to unexpected reasons.");
+        }
+
+        return responseDTO;
     }
 
     //Search for user in database for matching names
     public List<UserResponseDTO> getUsersByUsername(String username){
-        return userDetailsRepo.getUsersByUsername(username);
+        List<UserResponseDTO> userResponseDTOList = userDetailsRepo.getUsersByUsername(username);
+
+        if (userResponseDTOList.isEmpty()){
+            throw new NoUserFound("No user found with username : "+username);
+        }
+
+        return userResponseDTOList;
     }
 
     // to get user details excluding crucial data like meta-data and passwords
-    public ResponseEntity<UserResponseDTO> getEssentialUserDetails (){
+    public UserResponseDTO getEssentialUserDetails (){
 
-        try{
-            User u = userServiceHelper.getCurrentUserDetails();
-            if (u.getUserId()==null){
-                return new ResponseEntity<>(null,HttpStatus.NOT_FOUND);
-            }else {
-                UserResponseDTO userData = new UserResponseDTO(
-                        u.getUserId(),
-                        u.getUsername(),
-                        u.getBio(),
-                        convertLocalDateTimeToTimestamp(u.getCreatedDate())
-                );
-                return new ResponseEntity<>(userData,HttpStatus.OK);
-            }
-        } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        User u = userServiceHelper.getCurrentUserDetails();
+
+        return  new UserResponseDTO(
+                u.getUserId(),
+                u.getUsername(),
+                u.getBio(),
+                convertLocalDateTimeToTimestamp(u.getCreatedDate())
+        );
     }
 
     // Updates the full user details of current user (Username & bio)
     @Transactional
-    public ResponseEntity<UserResponseDTO> updateUserDetails(@Valid UserUpdateDetails newUserDetails) {
+    public UserResponseDTO updateUserDetails(UserUpdateDetails newUserDetails) {
 
-        userDetailsRepo.updateUserNameBio(
+        int rowEffected = userDetailsRepo.updateUserNameBio(
                 newUserDetails.getUsername(),
                 newUserDetails.getBio(),
                 userServiceHelper.getCurrentUserId()
         );
 
+        if (rowEffected == 0 ){
+            throw new FailsToUpdateEditResourceException("Fails to update new user details ");
+        }
+
         User u = userServiceHelper.getCurrentUserDetails();
 
-        return ResponseEntity.status(HttpStatus.OK).body(
-                new UserResponseDTO(
-                        u.getUserId(),
-                        u.getUsername(),
-                        u.getBio(),
-                        CommonUtilMethods.convertLocalDateTimeToTimestamp(u.getCreatedDate())
-                )
+        return new UserResponseDTO(
+                u.getUserId(),
+                u.getUsername(),
+                u.getBio(),
+                CommonUtilMethods.convertLocalDateTimeToTimestamp(u.getCreatedDate())
         );
     }
 
     //Updates the username of current user
     @Transactional
-    public ResponseEntity<UserResponseDTO> updateUsername(String newUsername) {
-        userDetailsRepo.updateUsername(
+    public UserResponseDTO updateUsername(String newUsername) {
+
+        int rowEffected = userDetailsRepo.updateUsername(
                 newUsername, userServiceHelper.getCurrentUserId()
         );
 
-        User u = userServiceHelper.getCurrentUserDetails();
+        if (rowEffected == 0 ){
+            throw new FailsToUpdateEditResourceException("Fails to update new username");
+        }
 
-        return ResponseEntity.status(HttpStatus.OK).body(
-                new UserResponseDTO(
-                        u.getUserId(),
-                        u.getUsername(),
-                        u.getBio(),
-                        CommonUtilMethods.convertLocalDateTimeToTimestamp(u.getCreatedDate())
-                )
+        User u = userServiceHelper.getCurrentUserDetails();
+        return new UserResponseDTO(
+                u.getUserId(),
+                u.getUsername(),
+                u.getBio(),
+                CommonUtilMethods.convertLocalDateTimeToTimestamp(u.getCreatedDate())
         );
     }
 
     //Updates the bio
     @Transactional
-    public ResponseEntity<UserResponseDTO> updateBio(String newBio){
+    public UserResponseDTO updateBio(String newBio){
 
-        userDetailsRepo.updateBio(
+        int rowEffected = userDetailsRepo.updateBio(
                 newBio, userServiceHelper.getCurrentUserId()
         );
 
+        if (rowEffected == 0 ){
+            throw new FailsToUpdateEditResourceException("Fails to update new bio");
+        }
+
         User u = userServiceHelper.getCurrentUserDetails();
 
-        return ResponseEntity.status(HttpStatus.OK).body(
-                new UserResponseDTO(
-                        u.getUserId(),
-                        u.getUsername(),
-                        u.getBio(),
-                        CommonUtilMethods.convertLocalDateTimeToTimestamp(u.getCreatedDate())
-                )
+        return new UserResponseDTO(
+                u.getUserId(),
+                u.getUsername(),
+                u.getBio(),
+                CommonUtilMethods.convertLocalDateTimeToTimestamp(u.getCreatedDate())
         );
     }
 
     // Delete user fully -- can't recover later
     @Transactional
-    public ResponseEntity<String> deleteUserFully(Long uId,String password) {
-        userServiceHelper.validateDeleteEditRequest(uId,password);
+    public void deleteUserFully(DeleteAccountRequestDTO deleteAccountRequestDTO) {
 
-        int rowEffected =userDetailsRepo.deleteUserFully(uId);
-        if (rowEffected>=1){
-            return ResponseEntity.status(HttpStatus.NO_CONTENT)
-                    .body("User deleted successfully");
+        userServiceHelper.validateDeleteEditRequest(
+                deleteAccountRequestDTO.getUId(),
+                deleteAccountRequestDTO.getPassword());
+
+        int rowEffected = userDetailsRepo.deleteUserFully(deleteAccountRequestDTO.getUId());
+
+        if (rowEffected==0){
+            throw new RuntimeException("User already deleted or does not exist");
         }
-
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body("User already deleted");
     }
 
     // to delete the user partially -- can be re cover later
     @Transactional
-    public ResponseEntity<String> deleteUserPartially(@Valid DeleteAccountRequestDTO deleteAccReqDTO) {
+    public void deleteUserPartially(@Valid DeleteAccountRequestDTO deleteAccReqDTO) {
 
         User user = userServiceHelper.validateDeleteEditRequest(
                 deleteAccReqDTO.getUId(),
                 deleteAccReqDTO.getPassword());
 
         if (!user.getIsActive()){
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body("The account/user is already disabled.");
+            throw new FailsToUpdateEditResourceException(
+                    "The account/user is already disabled."
+            );
         }
 
-        int rowEffected =userDetailsRepo.deleteUserPartially(deleteAccReqDTO.getUId());
+        int rowEffected = userDetailsRepo.deleteUserPartially(deleteAccReqDTO.getUId());
 
-        if (rowEffected>=1){
-            return ResponseEntity.status(HttpStatus.NO_CONTENT)
-                    .build();
+        if (rowEffected == 0){
+            throw new FailsToUpdateEditResourceException(
+                    "Fails to disable account due to unexpected reasons"
+            );
         }
-
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body("The account/user already disabled");
     }
 
     // Current use follow the other user
-    public ResponseEntity<?> followUser(Long userID) {
+    public void followUser(Long userID) {
 
-        User followUser = userDetailsRepo.findById(userID).orElse(new User());
+        User followUser = userDetailsRepo.findById(userID)
+                .orElseThrow(()-> new NoUserFound("Unable to find the user."));
 
-        if (followUser.getUsername() == null){
-            throw new FailToCreateNewResourceException("Unable to find the user ");
-        }else if (followUser.getIsActive() == false ){
+        if (followUser.getIsActive() == false ){
             throw new FailToCreateNewResourceException(
                     "The requested follow user is not active"
             );
@@ -221,7 +230,6 @@ public class UserService {
             );
         }
 
-        return ResponseEntity.status(HttpStatus.CREATED).body("Followed successfully");
     }
 
     private boolean isAlreadyFollowed(Long userId){

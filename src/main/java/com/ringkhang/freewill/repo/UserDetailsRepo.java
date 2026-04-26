@@ -41,7 +41,7 @@ public interface UserDetailsRepo extends JpaRepository<User, Long>{
             value = "UPDATE public.user_details SET username = :username, bio = :bio WHERE userid = :uId",
             nativeQuery = true
     )
-    void updateUserNameBio(@Param("username") String username,
+    int updateUserNameBio(@Param("username") String username,
                            @Param("bio") String bio,
                            @Param("uId") Long currentUserId);
 
@@ -52,7 +52,7 @@ public interface UserDetailsRepo extends JpaRepository<User, Long>{
             value = "UPDATE public.user_details SET username = :newUsername WHERE userid = :uId",
             nativeQuery = true
     )
-    void updateUsername(
+    int updateUsername(
             @Param("newUsername") String newUsername,
             @Param("uId") Long id);
 
@@ -63,7 +63,7 @@ public interface UserDetailsRepo extends JpaRepository<User, Long>{
             value = "UPDATE public.user_details SET bio = :newBio WHERE userid = :uId",
             nativeQuery = true
     )
-    void updateBio(
+    int updateBio(
             @Param("newBio") String newBio,
             @Param("uId") Long currentUserId
     );
