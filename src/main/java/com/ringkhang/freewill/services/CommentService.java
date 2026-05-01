@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
-import java.util.Optional;
 
 @Service
 public class CommentService {
@@ -39,7 +38,7 @@ public class CommentService {
         User user = userServiceHelper.getCurrentUserDetails();
 
         Posts post = postsRepo.findById(postId)
-                .orElseThrow(() -> new RequestedResourceNotAvailable("No post found."));
+                .orElseThrow(() -> new ResourceNotAvailable("No post found."));
 
         Comments comment = new Comments();
         comment.setCommentText(commentText);
@@ -55,7 +54,7 @@ public class CommentService {
     public CommentDTO updateComment(String comment, Long cId) {
 
         Comments commentsEntity = commentRepo.findById(cId).
-                orElseThrow(()-> new RequestedResourceNotAvailable("No comment found! ") );
+                orElseThrow(()-> new ResourceNotAvailable("No comment found! ") );
 
         if (!Objects.equals(commentsEntity.getUser().getUserId(), userServiceHelper.getCurrentUserId())) {
             throw new UnauthorizedException("Can't edit this comment coz your not the author of this comment ");
@@ -83,7 +82,7 @@ public class CommentService {
     public void deleteCommentPermanent(Long cId) {
 
         Comments commentEntity = commentRepo.findById(cId).
-                orElseThrow(()-> new RequestedResourceNotAvailable("No comment found!"));
+                orElseThrow(()-> new ResourceNotAvailable("No comment found!"));
 
         if (!Objects.equals(commentEntity.getUser().getUserId(), userServiceHelper.getCurrentUserId())) {
             throw new UnauthorizedException(

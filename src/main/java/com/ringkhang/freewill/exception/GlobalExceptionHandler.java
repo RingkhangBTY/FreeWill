@@ -21,15 +21,20 @@ public class GlobalExceptionHandler {
                 This is an error caused while trying to find the user/account but
                 no user exist. (Try again with valid user id)
                """.replace("\n"," ").trim();
-        return new ErrorResponse(HttpStatus.NOT_FOUND.value(),noUserFound.getMessage(),details);
+        return new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                noUserFound.getMessage(),
+                details
+        );
     }
 
     // To handle exception thrown when a requested resource is not available
-    @ExceptionHandler(RequestedResourceNotAvailable.class)
+    @ExceptionHandler(ResourceNotAvailable.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ErrorResponse handleResourceNotFoundException(RequestedResourceNotAvailable resourceNotAvailable){
+    public ErrorResponse handleResourceNotFoundException(ResourceNotAvailable resourceNotAvailable){
         String details = """
-                
+                 Fails to fetch the needed resource due to system failure or 
+                 invalid inputs.
                 """.replace("\n","").trim();
         return new ErrorResponse(HttpStatus.NOT_FOUND.value(), resourceNotAvailable.getMessage(),details);
     }
@@ -39,7 +44,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ErrorResponse handlesAnyGenericError(GenericException exception){
         String details = """
-                
+                Faces unexpected error cause by system failure.
                 """.replace("\n","").trim();
         return new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(), exception.getMessage(),details);
     }
@@ -85,11 +90,16 @@ public class GlobalExceptionHandler {
     }
 
     //If fails to create any new resources like new entries etc
-    @ExceptionHandler(FailToCreateNewResourceException.class)
+    @ExceptionHandler(CreateNewResourceException.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
-    public ErrorResponse handleFailedNewResourcesCreatedException(FailToCreateNewResourceException ex){
+    public ErrorResponse handleFailedNewResourcesCreatedException(
+            CreateNewResourceException ex){
+
         String details = ex.getMessage();
-        return new ErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR.value(),"Failed to create new resources",details);
+        return new ErrorResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "Failed to create new resources",
+                details);
     }
 
     // handle method arguments validations

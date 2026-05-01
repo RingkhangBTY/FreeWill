@@ -1,17 +1,15 @@
 package com.ringkhang.freewill.services;
 
 import com.ringkhang.freewill.exception.NoUserFound;
-import com.ringkhang.freewill.exception.RequestedResourceNotAvailable;
+import com.ringkhang.freewill.exception.ResourceNotAvailable;
 import com.ringkhang.freewill.exception.UnauthorizedException;
 import com.ringkhang.freewill.models.MyUserPrincipal;
 import com.ringkhang.freewill.models.User;
 import com.ringkhang.freewill.repo.UserDetailsRepo;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class UserServiceHelper {
@@ -52,7 +50,7 @@ public class UserServiceHelper {
         }
 
         User user = userDetailsRepo.findById(uId)
-                .orElseThrow(() -> new RequestedResourceNotAvailable(
+                .orElseThrow(() -> new ResourceNotAvailable(
                         "No user found with user id"
                 ));
 

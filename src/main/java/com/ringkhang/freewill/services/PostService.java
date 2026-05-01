@@ -3,7 +3,7 @@ package com.ringkhang.freewill.services;
 import com.ringkhang.freewill.DTO.CommentPostResponseDTO;
 import com.ringkhang.freewill.DTO.PostUploadDTO;
 import com.ringkhang.freewill.DTO.PostsResponseDTO;
-import com.ringkhang.freewill.exception.RequestedResourceNotAvailable;
+import com.ringkhang.freewill.exception.ResourceNotAvailable;
 import com.ringkhang.freewill.exception.TimeOutException;
 import com.ringkhang.freewill.exception.UnauthorizedException;
 import com.ringkhang.freewill.models.Comments;
@@ -13,7 +13,6 @@ import com.ringkhang.freewill.repo.LikesRepo;
 import com.ringkhang.freewill.repo.PostsRepo;
 import com.ringkhang.freewill.util.CommonUtilMethods;
 import jakarta.transaction.Transactional;
-import org.hibernate.annotations.processing.Find;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -104,7 +103,7 @@ public class PostService {
     @Transactional
     public void editPost(String newText, Long postId) {
         Posts p = postsRepo.findById(postId)
-                .orElseThrow(()-> new RequestedResourceNotAvailable("No post found"));
+                .orElseThrow(()-> new ResourceNotAvailable("No post found"));
 
         if (p.getUser().getUserId() != userServiceHelper.getCurrentUserId()) {
             throw new UnauthorizedException("Can't edit this post coz your not the author of this post ");

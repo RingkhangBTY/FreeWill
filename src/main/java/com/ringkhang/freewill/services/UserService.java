@@ -4,10 +4,9 @@ import com.ringkhang.freewill.DTO.DeleteAccountRequestDTO;
 import com.ringkhang.freewill.DTO.UserRegistrationDTO;
 import com.ringkhang.freewill.DTO.UserResponseDTO;
 import com.ringkhang.freewill.DTO.UserUpdateDetails;
-import com.ringkhang.freewill.exception.FailToCreateNewResourceException;
-import com.ringkhang.freewill.exception.FailsToUpdateEditResourceException;
+import com.ringkhang.freewill.exception.CreateNewResourceException;
+import com.ringkhang.freewill.exception.UpdateEditResourceException;
 import com.ringkhang.freewill.exception.NoUserFound;
-import com.ringkhang.freewill.exception.RequestedResourceNotAvailable;
 import com.ringkhang.freewill.models.Followers;
 import com.ringkhang.freewill.models.User;
 import com.ringkhang.freewill.repo.FollowRepo;
@@ -15,12 +14,9 @@ import com.ringkhang.freewill.repo.UserDetailsRepo;
 import com.ringkhang.freewill.util.CommonUtilMethods;
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.sql.SQLException;
 import java.util.List;
 
 import static com.ringkhang.freewill.util.CommonUtilMethods.convertLocalDateTimeToTimestamp;
@@ -45,7 +41,7 @@ public class UserService {
     public UserResponseDTO registerUser( UserRegistrationDTO userDetails) {
 
         if (userDetailsRepo.existsByUsername(userDetails.getUsername())){
-            throw new FailToCreateNewResourceException("User already exist");
+            throw new CreateNewResourceException("User already exist");
         }
 
         userDetails.setPassword(encoder.encode(userDetails.getPassword()));
@@ -67,7 +63,7 @@ public class UserService {
         );
 
         if (responseDTO.getUsername().isBlank()){
-            throw new FailToCreateNewResourceException("Fails to create new user due to unexpected reasons.");
+            throw new CreateNewResourceException("Fails to create new user due to unexpected reasons.");
         }
 
         return responseDTO;
@@ -108,7 +104,7 @@ public class UserService {
         );
 
         if (rowEffected == 0 ){
-            throw new FailsToUpdateEditResourceException("Fails to update new user details ");
+            throw new UpdateEditResourceException("Fails to update new user details ");
         }
 
         User u = userServiceHelper.getCurrentUserDetails();
@@ -130,7 +126,7 @@ public class UserService {
         );
 
         if (rowEffected == 0 ){
-            throw new FailsToUpdateEditResourceException("Fails to update new username");
+            throw new UpdateEditResourceException("Fails to update new username");
         }
 
         User u = userServiceHelper.getCurrentUserDetails();
@@ -151,7 +147,7 @@ public class UserService {
         );
 
         if (rowEffected == 0 ){
-            throw new FailsToUpdateEditResourceException("Fails to update new bio");
+            throw new UpdateEditResourceException("Fails to update new bio");
         }
 
         User u = userServiceHelper.getCurrentUserDetails();
@@ -188,7 +184,7 @@ public class UserService {
                 deleteAccReqDTO.getPassword());
 
         if (!user.getIsActive()){
-            throw new FailsToUpdateEditResourceException(
+            throw new UpdateEditResourceException(
                     "The account/user is already disabled."
             );
         }
@@ -196,7 +192,7 @@ public class UserService {
         int rowEffected = userDetailsRepo.deleteUserPartially(deleteAccReqDTO.getUId());
 
         if (rowEffected == 0){
-            throw new FailsToUpdateEditResourceException(
+            throw new UpdateEditResourceException(
                     "Fails to disable account due to unexpected reasons"
             );
         }
@@ -209,13 +205,13 @@ public class UserService {
                 .orElseThrow(()-> new NoUserFound("Unable to find the user."));
 
         if (followUser.getIsActive() == false ){
-            throw new FailToCreateNewResourceException(
+            throw new CreateNewResourceException(
                     "The requested follow user is not active"
             );
         }
 
         if (isAlreadyFollowed(userID)){
-            throw new FailToCreateNewResourceException("Current user already follows this user..");
+            throw new CreateNewResourceException("Current user already follows this user..");
         }
 
         Followers follow = new Followers();
@@ -225,7 +221,7 @@ public class UserService {
         Followers followers = followRepo.save(follow);
 
         if (followers.getFollower() == null || followers.getFollows() == null){
-            throw new FailToCreateNewResourceException(
+            throw new CreateNewResourceException(
                     "Failed to follow user"
             );
         }
